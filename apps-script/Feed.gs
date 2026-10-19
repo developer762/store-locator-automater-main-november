@@ -104,6 +104,82 @@ var STATE_COORDINATES_ = {
   WI: [43.7844, -88.7879], WY: [43.0759, -107.2903]
 };
 
+// Valid USPS state codes (50 states + DC). Anything else (DFW, ST, US, region names) is NOT a state.
+var US_STATE_CODES_ = Object.keys(STATE_COORDINATES_).concat(['DC']);
+
+var US_STATE_NAMES_ = {
+  'ALABAMA': 'AL', 'ALASKA': 'AK', 'ARIZONA': 'AZ', 'ARKANSAS': 'AR', 'CALIFORNIA': 'CA', 'COLORADO': 'CO',
+  'CONNECTICUT': 'CT', 'DELAWARE': 'DE', 'FLORIDA': 'FL', 'GEORGIA': 'GA', 'HAWAII': 'HI', 'IDAHO': 'ID',
+  'ILLINOIS': 'IL', 'INDIANA': 'IN', 'IOWA': 'IA', 'KANSAS': 'KS', 'KENTUCKY': 'KY', 'LOUISIANA': 'LA',
+  'MAINE': 'ME', 'MARYLAND': 'MD', 'MASSACHUSETTS': 'MA', 'MICHIGAN': 'MI', 'MINNESOTA': 'MN', 'MISSISSIPPI': 'MS',
+  'MISSOURI': 'MO', 'MONTANA': 'MT', 'NEBRASKA': 'NE', 'NEVADA': 'NV', 'NEW HAMPSHIRE': 'NH', 'NEW JERSEY': 'NJ',
+  'NEW MEXICO': 'NM', 'NEW YORK': 'NY', 'NORTH CAROLINA': 'NC', 'NORTH DAKOTA': 'ND', 'OHIO': 'OH', 'OKLAHOMA': 'OK',
+  'OREGON': 'OR', 'PENNSYLVANIA': 'PA', 'RHODE ISLAND': 'RI', 'SOUTH CAROLINA': 'SC', 'SOUTH DAKOTA': 'SD',
+  'TENNESSEE': 'TN', 'TEXAS': 'TX', 'UTAH': 'UT', 'VERMONT': 'VT', 'VIRGINIA': 'VA', 'WASHINGTON': 'WA',
+  'WEST VIRGINIA': 'WV', 'WISCONSIN': 'WI', 'WYOMING': 'WY', 'DISTRICT OF COLUMBIA': 'DC'
+};
+
+// Market / city keywords that appear in tab names, title rows or region rows but are not states.
+var MARKET_STATE_HINTS_ = {
+  'DFW': 'TX', 'DALLAS': 'TX', 'FORT WORTH': 'TX', 'HOUSTON': 'TX', 'AUSTIN': 'TX', 'SAN ANTONIO': 'TX', 'EL PASO': 'TX',
+  'NASHVILLE': 'TN', 'MEMPHIS': 'TN', 'CHATTANOOGA': 'TN', 'CHATANOOGA': 'TN', 'KNOXVILLE': 'TN',
+  'LOUISVILLE': 'KY', 'LEXINGTON': 'KY', 'ATLANTA': 'GA', 'SAVANNAH': 'GA', 'CHICAGO': 'IL',
+  'MIAMI': 'FL', 'TAMPA': 'FL', 'ORLANDO': 'FL', 'JACKSONVILLE': 'FL', 'BOSTON': 'MA', 'PROVIDENCE': 'RI',
+  'LAS VEGAS': 'NV', 'PHOENIX': 'AZ', 'SCOTTSDALE': 'AZ', 'DENVER': 'CO', 'WICHITA': 'KS', 'ST. LOUIS': 'MO', 'ST LOUIS': 'MO',
+  'MILWAUKEE': 'WI', 'OKLAHOMA CITY': 'OK', 'TULSA': 'OK', 'LOS ANGELES': 'CA', 'SAN DIEGO': 'CA', 'SAN FRANCISCO': 'CA',
+  'MANHATTAN': 'NY', 'BROOKLYN': 'NY', 'NEWARK': 'NJ', 'JERSEY CITY': 'NJ'
+};
+
+function isValidStateCode_(code) {
+  return US_STATE_CODES_.indexOf(String(code || '').trim().toUpperCase()) !== -1;
+}
+
+// Converts a cell value to a real state code ("tx", "Texas" -> "TX"). Returns '' for anything else (DFW, ST, US, store names).
+function normalizeStateCode_(raw) {
+  var str = String(raw || '').trim().toUpperCase().replace(/\./g, '');
+  if (!str) return '';
+  if (str.length === 2 && isValidStateCode_(str)) return str;
+  if (US_STATE_NAMES_[str]) return US_STATE_NAMES_[str];
+  return '';
+}
+
+function escapeRegex_(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Finds a state in free text (tab name, title rows, city). allowCodes=true also accepts whole-word
+// UPPERCASE state codes (e.g. "Depletions TX July 2026", "MA-RI Summary"); title rows use names/markets only.
+function inferStateFromText_(text, allowCodes) {
+  var str = String(text || '');
+  if (!str.trim()) return '';
+  var upper = str.toUpperCase();
+
+  var overrides = (LOCATOR_CONFIG && LOCATOR_CONFIG.stateOverrides) || {};
+  for (var key in overrides) {
+    if (key && upper.indexOf(String(key).toUpperCase()) !== -1 && isValidStateCode_(overrides[key])) {
+      return String(overrides[key]).toUpperCase();
+    }
+  }
+
+  if (allowCodes) {
+    var tokens = str.split(/[^A-Za-z]+/);
+    for (var t = 0; t < tokens.length; t++) {
+      if (tokens[t].length === 2 && tokens[t] === tokens[t].toUpperCase() && isValidStateCode_(tokens[t])) {
+        return tokens[t];
+      }
+    }
+  }
+
+  var padded = ' ' + upper.replace(/[^A-Z.]+/g, ' ') + ' ';
+  for (var name in US_STATE_NAMES_) {
+    if (padded.indexOf(' ' + name + ' ') !== -1) return US_STATE_NAMES_[name];
+  }
+  for (var market in MARKET_STATE_HINTS_) {
+    if (new RegExp('(^|[^A-Z])' + escapeRegex_(market) + '([^A-Z]|$)').test(upper)) return MARKET_STATE_HINTS_[market];
+  }
+  return '';
+}
+
 function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
   var locations = [];
   var skipped = { notReady: 0, invalidCoordinates: 0, duplicate: 0 };
@@ -111,13 +187,12 @@ function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
 
   var cleanGid = sheetGid !== undefined && sheetGid !== null ? String(sheetGid) : '';
 
-  // Infer default state from sheet name if missing in row (e.g. "Casa Mexico Rolling 12 (24) KY" -> "KY", "July 2026 NY-NJ" -> "NY")
-  var inferredState = '';
-  var stateMatch = sheetName.match(/\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/i);
-  if (stateMatch) inferredState = stateMatch[1].toUpperCase();
+  // Infer default state from sheet name if missing in row
+  // ("Casa Mexico Rolling 12 (24) KY" -> KY, "July 2026 NY-NJ" -> NY, "Depletions Nashville August 2026" -> TN)
+  var inferredState = inferStateFromText_(sheetName, true);
 
-  // Multiplier check for MA/RI per client email note
-  var isMaRi = /MA|RI/i.test(sheetName);
+  // Multiplier check for MA/RI per client email note (whole words only, so "Summary"/"Cristalino" don't match)
+  var isMaRi = /\b(MA|RI)\b/.test(sheetName);
 
   // Find header row (search first 10 rows)
   var headerRowIdx = -1;
@@ -126,6 +201,14 @@ function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
     if (rowText.indexOf('account') !== -1 || rowText.indexOf('store') !== -1 || rowText.indexOf('address') !== -1 || rowText.indexOf('retailer') !== -1 || rowText.indexOf('customer') !== -1 || rowText.indexOf('transaction') !== -1 || rowText.indexOf('description') !== -1 || rowText.indexOf('quantity') !== -1 || rowText.indexOf('item') !== -1 || rowText.indexOf('cases') !== -1 || rowText.indexOf('brand') !== -1 || rowText.indexOf('company') !== -1 || rowText.indexOf('name') !== -1 || rowText.indexOf('sold') !== -1 || rowText.indexOf('client') !== -1 || rowText.indexOf('buyer') !== -1 || rowText.indexOf('date') !== -1 || rowText.indexOf('city') !== -1) {
       headerRowIdx = h;
       break;
+    }
+  }
+
+  // No state in the tab name: look at title rows above the header (e.g. "Athens Nashville") for a state/market name
+  if (!inferredState) {
+    var titleLimit = headerRowIdx !== -1 ? headerRowIdx : Math.min(5, values.length);
+    for (var tr = 0; tr < titleLimit && !inferredState; tr++) {
+      inferredState = inferStateFromText_((values[tr] || []).join(' '), false);
     }
   }
 
@@ -211,11 +294,10 @@ function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
     }
 
     var stateRaw = colMap.state !== undefined && colMap.state !== -1 ? cellAlias_(row, colMap.state) : '';
-    var cleanState = '';
-    if (stateRaw && stateRaw.trim().length <= 3 && /^[A-Za-z]{2,3}$/.test(stateRaw.trim())) {
-      cleanState = stateRaw.trim().toUpperCase();
-    }
-    var state = cleanState || inferredState || 'US';
+    // Only real US state codes are accepted; DFW / ST / US / region / salesman text falls back to the tab's state.
+    // Rows with no identifiable state get '' (shown under "All States" only, never as a fake state option).
+    var cleanState = normalizeStateCode_(stateRaw);
+    var state = cleanState || inferredState || inferStateFromText_(cityRaw, false) || '';
 
     var postalCode = colMap.postalCode !== undefined && colMap.postalCode !== -1 ? cellAlias_(row, colMap.postalCode) : '';
     var premiseType = colMap.premiseType !== undefined && colMap.premiseType !== -1 ? cellAlias_(row, colMap.premiseType) : '';
@@ -254,7 +336,7 @@ function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
     var addrParts = [];
     if (displayAddress) addrParts.push(displayAddress);
     if (city && city !== displayAddress) addrParts.push(city);
-    if (state && state !== 'US' && (!displayAddress || displayAddress.indexOf(state) === -1)) addrParts.push(state);
+    if (state && (!displayAddress || displayAddress.indexOf(state) === -1)) addrParts.push(state);
     if (postalCode) addrParts.push(postalCode);
 
     var fullAddress = addrParts.length > 0 ? addrParts.join(', ') : '';
@@ -285,7 +367,7 @@ function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
       name: cleanName,
       address: fullAddress,
       city: city,
-      state: state || 'US',
+      state: state,
       postalCode: String(postalCode || ''),
       type: type,
       latitude: lat,
@@ -293,8 +375,8 @@ function normalizeSheetRows_(values, sheetName, seenIds, sheetGid) {
       placeId: uniqueId,
       phone: phone || '',
       website: website || '',
-      distributor: (state !== 'US' ? state : sheetName) + ' Distributor',
-      territory: state !== 'US' ? state : sheetName,
+      distributor: (state || sheetName) + ' Distributor',
+      territory: state || sheetName,
       tabName: sheetName,
       sheetGid: cleanGid,
       cases: cases,
@@ -331,13 +413,17 @@ function findCol_(headers, aliases) {
     }
   }
   // 2. Whole phrase match (header contains full alias string)
+  //    Short aliases (<= 3 chars like "ST", "ID", "Lat") must match a whole word, otherwise
+  //    "ST" matches "cuSTomer" and the Customer Name column gets read as the State column.
   for (var i = 0; i < aliases.length; i++) {
     var aliasNorm = String(aliases[i]).toLowerCase().trim();
     if (!aliasNorm) continue;
     for (var j = 0; j < headers.length; j++) {
       var hNorm = String(headers[j]).toLowerCase().trim();
       if (!hNorm) continue;
-      if (hNorm === aliasNorm || hNorm.indexOf(aliasNorm) !== -1) {
+      if (aliasNorm.length <= 3) {
+        if (hNorm.split(/[^a-z0-9]+/).indexOf(aliasNorm) !== -1) return j;
+      } else if (hNorm === aliasNorm || hNorm.indexOf(aliasNorm) !== -1) {
         return j;
       }
     }

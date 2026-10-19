@@ -131,3 +131,44 @@ test('handles depletion inventory tabs like Depletions MEMPHIS August 2026 and i
   assert.equal(result.locations[2].cases, 1);
 });
 
+
+test('state filter only receives real US state codes (no DFW / ST / US)', () => {
+  const tx = context.normalizeSheetRows_([
+    ['Location / Salesman Assigned / Customer Name', 'Product Name / City', 'Cases 2026/7', 'Cases Sum'],
+    ['DFW', 'Casa Mexico High Proof Reposado 750', '12.00', '12.00'],
+    ['Goody Goody #16', 'Little Elm', '1.00', '1.00'],
+  ], 'Depletions TX July 2026', {});
+  tx.locations.forEach((l) => assert.equal(l.state, 'TX'));
+
+  const ks = context.normalizeSheetRows_([
+    ['Account', 'Address', 'City', 'ST', 'Zip'],
+    ['FIFO Adjustment - City', 'Distributor Address', 'City', 'ST', 'Zip'],
+  ], 'Depletions KS July 2026', {});
+  assert.equal(ks.locations[0].state, 'KS');
+
+  const nash = context.normalizeSheetRows_([
+    ['Athens Nashville'], [''],
+    ['ITEM', 'DESCRIPTION SIZE', 'CASE PACK', 'BEG INV', 'SALES'],
+    ['42311730', 'CASA MEXICO BLANCO TEQUILA', '6', '14.99', '8.00'],
+  ], 'Depletions Nashville August 2026', {});
+  assert.equal(nash.locations[0].state, 'TN');
+
+  const blanco = context.normalizeSheetRows_([
+    ['LUX BEVERAGE LLC   WH8730132'], ['Blanco'], ['Casa Mexico - Blanco'],
+    ['Transaction date', 'Customer full name', 'Description', 'Quantity'],
+    ['08/04/2026', "Bob's Liquors DL1934237", 'Case of 6 bottles', '1'],
+  ], 'Blanco August 2026', {});
+  assert.equal(blanco.locations[0].state, ''); // unknown state -> not listed as a fake "US" option
+  assert.equal(blanco.locations[0].territory, 'Blanco August 2026');
+
+  assert.equal(context.normalizeStateCode_('Texas'), 'TX');
+  assert.equal(context.normalizeStateCode_('DFW'), '');
+  assert.equal(context.normalizeStateCode_('US'), '');
+  assert.equal(context.normalizeStateCode_('ST'), '');
+});
+
+test('MA/RI 2x multiplier only applies to MA or RI tabs', () => {
+  const rows = [['Customer Name', 'Cases'], ['Some Store', '3']];
+  assert.equal(context.normalizeSheetRows_(rows, 'MA-RI August 2026', {}).locations[0].cases, 6);
+  assert.equal(context.normalizeSheetRows_(rows, 'Depletions SC Summary', {}).locations[0].cases, 3);
+});

@@ -18,6 +18,10 @@ var LOCATOR_CONFIG = Object.freeze({
     bottlings: ['Bottlings Stocked', 'Bottlings', 'Products', 'Item Names', 'Product Name', 'Product', 'Item Description', 'Item Descripti', 'Description Size', 'Description', 'Item Name', 'Brands', 'Brand', 'SKU'],
     date: ['Transaction date', 'Transaction d', 'Transaction Date', 'Date', 'Invoice Date', 'Order Date', 'Sale Date', 'Time']
   },
+  // Optional: force a state for tabs that have no state anywhere in the tab name or data
+  // (match is case-insensitive text inside the tab name or its title rows). Example:
+  // stateOverrides: { 'LUX BEVERAGE': 'XX', 'Blanco August 2026': 'XX' }
+  stateOverrides: {},
   requiredHeaders: [
     'Locator Name'
   ]

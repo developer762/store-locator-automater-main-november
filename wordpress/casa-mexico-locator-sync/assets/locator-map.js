@@ -288,6 +288,8 @@
     if (currentVal && tabsMap[currentVal]) tabSelect.value = currentVal;
   }
 
+  var US_STATE_CODES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+
   function populateStateSelect(locations) {
     var stateSelect = document.getElementById('cmx-state-select');
     if (!stateSelect) return;
@@ -297,7 +299,7 @@
 
     locations.forEach(function (loc) {
       var st = loc.state ? String(loc.state).trim().toUpperCase() : '';
-      if (st && st.length <= 3 && /^[A-Z]{2,3}$/.test(st)) {
+      if (US_STATE_CODES.indexOf(st) !== -1) { // real US states only (no DFW, ST, US)
         statesSet[st] = true;
       }
     });
@@ -355,7 +357,7 @@
       });
 
       var matchesTab = !tabVal || tabNameResolved === tabVal;
-      var matchesState = !stateVal || (loc.state && String(loc.state).toUpperCase() === stateVal);
+      var matchesState = !stateVal || (loc.state && String(loc.state).trim().toUpperCase() === stateVal);
       var matchesType = !typeVal || loc.type === typeVal;
 
       return matchesSearch && matchesTab && matchesState && matchesType;

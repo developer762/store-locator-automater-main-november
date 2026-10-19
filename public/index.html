@@ -1056,8 +1056,13 @@
       }
     }
 
+    // Only real US state codes go in the State filter (no DFW, ST, US or other region text)
+    const US_STATE_CODES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+
     function populateStateFilter(locations) {
-      const states = [...new Set(locations.map(l => l.state).filter(st => st && st.length <= 3 && !/\s/.test(st)))].sort();
+      const states = [...new Set(locations
+        .map(l => String(l.state || '').trim().toUpperCase())
+        .filter(st => US_STATE_CODES.includes(st)))].sort();
       const select = document.getElementById('state-select');
       select.innerHTML = '<option value="">All States (' + states.length + ')</option>';
       states.forEach(st => {
@@ -1438,7 +1443,7 @@
         const fullText = [loc.name, loc.address, loc.city, loc.state, loc.bottlings, loc.tabName, loc.territory, loc.date].join(' ').toLowerCase();
         const matchesSearch = !searchTerm || fullText.includes(searchTerm);
         const matchesTab = !selectedTab || loc.tabName === selectedTab;
-        const matchesState = !selectedState || loc.state === selectedState;
+        const matchesState = !selectedState || String(loc.state || '').trim().toUpperCase() === selectedState;
         const matchesType = !selectedType || loc.type === selectedType;
         return matchesSearch && matchesTab && matchesState && matchesType;
       });
