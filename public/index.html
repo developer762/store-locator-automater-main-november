@@ -890,6 +890,13 @@
     let globalFeedData = null;
     let visibleCount = 8;
 
+    // November 2026 filter: only show locations from sheets whose tabName contains "November" AND "2026"
+    function isNovember2026Sheet(tabName) {
+      if (!tabName) return false;
+      var t = String(tabName).toLowerCase();
+      return t.indexOf('november') !== -1 && t.indexOf('2026') !== -1;
+    }
+
     function logMsg(msg) {
       const panel = document.getElementById('log-panel');
       const time = new Date().toLocaleTimeString();
@@ -990,6 +997,13 @@
           throw new Error('Unable to retrieve store location data. Please verify your connection or click Force Refresh.');
         }
 
+        // Apply November 2026 filter: only keep locations from matching sheets
+        if (data.locations) {
+          data.locations = data.locations.filter(function(loc) {
+            return isNovember2026Sheet(loc.tabName);
+          });
+          data.count = data.locations.length;
+        }
         globalFeedData = data;
         
         const publishedCount = data.count || data.locations.length || 0;

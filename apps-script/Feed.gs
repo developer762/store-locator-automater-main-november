@@ -51,6 +51,11 @@ function getLocatorPayload_(bypassCache) {
     if (sheet.isSheetHidden()) continue;
     
     var sheetName = sheet.getName();
+    
+    // November 2026 filter: only process sheets containing "November" AND "2026"
+    var sheetNameLower = sheetName.toLowerCase();
+    if (sheetNameLower.indexOf('november') === -1 || sheetNameLower.indexOf('2026') === -1) continue;
+    
     var sheetGid = sheet.getSheetId ? sheet.getSheetId() : '';
     var values = sheet.getDataRange().getValues();
     if (!values || values.length < 2) continue;

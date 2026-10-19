@@ -114,6 +114,11 @@ function cmx_locator_sync()
         return cmx_locator_record_error('Feed response is not valid JSON.');
     }
 
+    $payload['locations'] = array_values(array_filter($payload['locations'], function ($loc) {
+        $tab = isset($loc['tabName']) ? strtolower((string) $loc['tabName']) : '';
+        return strpos($tab, 'november') !== false && strpos($tab, '2026') !== false;
+    }));
+
     $validated = cmx_locator_validate_payload($payload, (int) $options['minimum_locations']);
     if (is_wp_error($validated)) {
         return cmx_locator_record_error($validated->get_error_message());
