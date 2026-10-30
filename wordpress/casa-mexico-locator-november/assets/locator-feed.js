@@ -3,8 +3,8 @@
 
   var DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbz8pQv5oekeeTT35zyE22mPqczBBeWI6facsR9vs62jUCzv-kC4eiDxKyYf43nvx9Faew/exec';
 
-  if (!window.CMX_LOCATOR) {
-    window.CMX_LOCATOR = {};
+  if (!window.CMX_NOVEMBER_LOCATOR) {
+    window.CMX_NOVEMBER_LOCATOR = {};
   }
 
   function isNovember2026Sheet(tabName) {
@@ -22,13 +22,13 @@
       return isNovember2026Sheet(loc.tabName);
     });
     payload.count = payload.locations.length;
-    window.CMX_LOCATOR.locations = payload.locations;
+    window.CMX_NOVEMBER_LOCATOR.locations = payload.locations;
     window.dispatchEvent(new CustomEvent('cmx:locations-ready', { detail: payload }));
     return payload;
   }
 
-  window.CMX_LOCATOR.load = function () {
-    var fetchUrl = window.CMX_LOCATOR.url || '';
+  window.CMX_NOVEMBER_LOCATOR.load = function () {
+    var fetchUrl = window.CMX_NOVEMBER_LOCATOR.url || '';
     if (fetchUrl && fetchUrl.indexOf('_t=') === -1) {
       fetchUrl += (fetchUrl.indexOf('?') === -1 ? '?' : '&') + '_t=' + new Date().getTime();
     }
@@ -38,7 +38,7 @@
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
     };
 
-    var directUrl = window.CMX_LOCATOR.directEndpoint || DEFAULT_ENDPOINT;
+    var directUrl = window.CMX_NOVEMBER_LOCATOR.directEndpoint || DEFAULT_ENDPOINT;
     if (directUrl && directUrl.indexOf('nocache=') === -1) {
       directUrl += (directUrl.indexOf('?') === -1 ? '?' : '&') + 'nocache=1';
     }
@@ -58,8 +58,8 @@
     return fetch(fetchUrl, fetchOptions)
       .then(function (response) {
         if (!response.ok) {
-          if (window.CMX_LOCATOR.restUrl) {
-            var restUrl = window.CMX_LOCATOR.restUrl;
+          if (window.CMX_NOVEMBER_LOCATOR.restUrl) {
+            var restUrl = window.CMX_NOVEMBER_LOCATOR.restUrl;
             if (restUrl.indexOf('_t=') === -1) {
               restUrl += (restUrl.indexOf('?') === -1 ? '?' : '&') + '_t=' + new Date().getTime();
             }
@@ -82,7 +82,7 @@
       });
   };
 
-  window.CMX_LOCATOR.load().catch(function (error) {
+  window.CMX_NOVEMBER_LOCATOR.load().catch(function (error) {
     window.dispatchEvent(new CustomEvent('cmx:locations-error', { detail: error }));
     if (window.console) console.error('Casa Mexico locator:', error);
   });

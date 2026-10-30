@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Casa Mexico Store Locator Sync
- * Description: Caches the Casa Mexico Google Sheets locator feed and exposes it to the front end.
- * Version: 1.1.0
+ * Plugin Name: Casa Mexico November Store Locator
+ * Description: November 2026 Casa Mexico Store Locator with an independent Google Sheets feed and cache.
+ * Version: 1.0.0
  * Author: Casa Mexico
  * License: GPL-2.0-or-later
  */
@@ -11,26 +11,26 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-const CMX_LOCATOR_OPTION = 'cmx_locator_sync_options';
-const CMX_LOCATOR_CRON = 'cmx_locator_sync_cron';
-const CMX_LOCATOR_FILENAME = 'casa-mexico-locations.json';
+const CMX_NOVEMBER_LOCATOR_OPTION = 'cmx_november_locator_sync_options';
+const CMX_NOVEMBER_LOCATOR_CRON = 'cmx_november_locator_sync_cron';
+const CMX_NOVEMBER_LOCATOR_FILENAME = 'casa-mexico-november-locations.json';
 
-register_activation_hook(__FILE__, 'cmx_locator_activate');
-register_deactivation_hook(__FILE__, 'cmx_locator_deactivate');
+register_activation_hook(__FILE__, 'cmx_november_locator_activate');
+register_deactivation_hook(__FILE__, 'cmx_november_locator_deactivate');
 
-add_filter('cron_schedules', 'cmx_locator_cron_schedules');
-add_action(CMX_LOCATOR_CRON, 'cmx_locator_sync');
-add_action('admin_menu', 'cmx_locator_admin_menu');
-add_action('admin_init', 'cmx_locator_register_settings');
-add_action('admin_init', 'cmx_locator_ensure_scheduled');
-add_action('init', 'cmx_locator_ensure_scheduled');
-add_action('rest_api_init', 'cmx_locator_register_rest_routes');
-add_action('admin_post_cmx_locator_save_and_sync', 'cmx_locator_save_and_sync');
-add_action('admin_post_cmx_locator_sync_now', 'cmx_locator_save_and_sync');
-add_action('wp_enqueue_scripts', 'cmx_locator_enqueue_config');
-add_shortcode('casa_mexico_november_locator', 'cmx_locator_shortcode');
+add_filter('cron_schedules', 'cmx_november_locator_cron_schedules');
+add_action(CMX_NOVEMBER_LOCATOR_CRON, 'cmx_november_locator_sync');
+add_action('admin_menu', 'cmx_november_locator_admin_menu');
+add_action('admin_init', 'cmx_november_locator_register_settings');
+add_action('admin_init', 'cmx_november_locator_ensure_scheduled');
+add_action('init', 'cmx_november_locator_ensure_scheduled');
+add_action('rest_api_init', 'cmx_november_locator_register_rest_routes');
+add_action('admin_post_cmx_november_locator_save_and_sync', 'cmx_november_locator_save_and_sync');
+add_action('admin_post_cmx_november_locator_sync_now', 'cmx_november_locator_save_and_sync');
+add_action('wp_enqueue_scripts', 'cmx_november_locator_enqueue_config');
+add_shortcode('casa_mexico_november_locator', 'cmx_november_locator_shortcode');
 
-function cmx_locator_defaults()
+function cmx_november_locator_defaults()
 {
     return array(
         'endpoint' => 'https://script.google.com/macros/s/AKfycbz8pQv5oekeeTT35zyE22mPqczBBeWI6facsR9vs62jUCzv-kC4eiDxKyYf43nvx9Faew/exec',
@@ -41,45 +41,45 @@ function cmx_locator_defaults()
     );
 }
 
-function cmx_locator_options()
+function cmx_november_locator_options()
 {
-    wp_cache_delete(CMX_LOCATOR_OPTION, 'options');
-    return wp_parse_args(get_option(CMX_LOCATOR_OPTION, array()), cmx_locator_defaults());
+    wp_cache_delete(CMX_NOVEMBER_LOCATOR_OPTION, 'options');
+    return wp_parse_args(get_option(CMX_NOVEMBER_LOCATOR_OPTION, array()), cmx_november_locator_defaults());
 }
 
-function cmx_locator_ensure_scheduled()
+function cmx_november_locator_ensure_scheduled()
 {
-    if (!wp_next_scheduled(CMX_LOCATOR_CRON)) {
-        wp_schedule_event(time() + 60, 'cmx_fifteen_minutes', CMX_LOCATOR_CRON);
+    if (!wp_next_scheduled(CMX_NOVEMBER_LOCATOR_CRON)) {
+        wp_schedule_event(time() + 60, 'cmx_november_fifteen_minutes', CMX_NOVEMBER_LOCATOR_CRON);
     }
 }
 
-function cmx_locator_activate()
+function cmx_november_locator_activate()
 {
-    cmx_locator_ensure_scheduled();
-    cmx_locator_sync();
+    cmx_november_locator_ensure_scheduled();
+    cmx_november_locator_sync();
 }
 
-function cmx_locator_deactivate()
+function cmx_november_locator_deactivate()
 {
-    wp_clear_scheduled_hook(CMX_LOCATOR_CRON);
+    wp_clear_scheduled_hook(CMX_NOVEMBER_LOCATOR_CRON);
 }
 
-function cmx_locator_cron_schedules($schedules)
+function cmx_november_locator_cron_schedules($schedules)
 {
-    $schedules['cmx_fifteen_minutes'] = array(
+    $schedules['cmx_november_fifteen_minutes'] = array(
         'interval' => 15 * MINUTE_IN_SECONDS,
-        'display' => __('Every 15 minutes', 'cmx-locator'),
+        'display' => __('Every 15 minutes', 'cmx-november-locator'),
     );
     return $schedules;
 }
 
-function cmx_locator_sync()
+function cmx_november_locator_sync()
 {
-    $options = cmx_locator_options();
+    $options = cmx_november_locator_options();
     $endpoint = trim($options['endpoint']);
     if (!$endpoint) {
-        return cmx_locator_record_error('The Apps Script endpoint is not configured.');
+        return cmx_november_locator_record_error('The Apps Script endpoint is not configured.');
     }
 
     $sync_url = add_query_arg(array(
@@ -92,7 +92,7 @@ function cmx_locator_sync()
         'timeout' => 45,
         'redirection' => 10,
         'sslverify' => false,
-        'user-agent' => 'WordPress/CasaMexicoLocatorSync-1.1.0; ' . get_bloginfo('url'),
+        'user-agent' => 'WordPress/CasaMexicoNovemberLocator-1.0.0; ' . get_bloginfo('url'),
         'headers' => array(
             'Accept' => 'application/json',
             'Cache-Control' => 'no-cache, no-store, must-revalidate',
@@ -100,18 +100,18 @@ function cmx_locator_sync()
         ),
     ));
     if (is_wp_error($response)) {
-        return cmx_locator_record_error($response->get_error_message());
+        return cmx_november_locator_record_error($response->get_error_message());
     }
 
     $status = wp_remote_retrieve_response_code($response);
     if ($status !== 200) {
-        return cmx_locator_record_error('Feed returned HTTP ' . $status . ' from Apps Script endpoint.');
+        return cmx_november_locator_record_error('Feed returned HTTP ' . $status . ' from Apps Script endpoint.');
     }
 
     $body = wp_remote_retrieve_body($response);
     $payload = json_decode($body, true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($payload)) {
-        return cmx_locator_record_error('Feed response is not valid JSON.');
+        return cmx_november_locator_record_error('Feed response is not valid JSON.');
     }
 
     $payload['locations'] = array_values(array_filter($payload['locations'], function ($loc) {
@@ -119,17 +119,17 @@ function cmx_locator_sync()
         return strpos($tab, 'november') !== false && strpos($tab, '2026') !== false;
     }));
 
-    $validated = cmx_locator_validate_payload($payload, (int) $options['minimum_locations']);
+    $validated = cmx_november_locator_validate_payload($payload, (int) $options['minimum_locations']);
     if (is_wp_error($validated)) {
-        return cmx_locator_record_error($validated->get_error_message());
+        return cmx_november_locator_record_error($validated->get_error_message());
     }
 
     $upload = wp_upload_dir();
     if (!empty($upload['error'])) {
-        return cmx_locator_record_error($upload['error']);
+        return cmx_november_locator_record_error($upload['error']);
     }
 
-    $path = trailingslashit($upload['basedir']) . CMX_LOCATOR_FILENAME;
+    $path = trailingslashit($upload['basedir']) . CMX_NOVEMBER_LOCATOR_FILENAME;
     $backup = $path . '.bak';
     $temporary = $path . '.tmp';
 
@@ -138,28 +138,28 @@ function cmx_locator_sync()
 
     $json = wp_json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if ($json === false || file_put_contents($temporary, $json, LOCK_EX) === false) {
-        return cmx_locator_record_error('Could not write the temporary locator feed.');
+        return cmx_november_locator_record_error('Could not write the temporary locator feed.');
     }
 
     if (file_exists($path) && !copy($path, $backup)) {
         @unlink($temporary);
-        return cmx_locator_record_error('Could not back up the previous locator feed.');
+        return cmx_november_locator_record_error('Could not back up the previous locator feed.');
     }
     if (!rename($temporary, $path)) {
         @unlink($temporary);
-        return cmx_locator_record_error('Could not replace the cached locator feed.');
+        return cmx_november_locator_record_error('Could not replace the cached locator feed.');
     }
 
     $options['last_sync_at'] = gmdate('c');
     $options['last_count'] = count($validated);
     $options['last_error'] = '';
-    update_option(CMX_LOCATOR_OPTION, $options);
-    do_action('cmx_locator_sync_complete', $payload, $path);
+    update_option(CMX_NOVEMBER_LOCATOR_OPTION, $options);
+    do_action('cmx_november_locator_sync_complete', $payload, $path);
 
     return count($validated);
 }
 
-function cmx_locator_validate_payload($payload, $minimum)
+function cmx_november_locator_validate_payload($payload, $minimum)
 {
     if (!is_array($payload) || !empty($payload['error']) || !isset($payload['locations']) || !is_array($payload['locations'])) {
         return new WP_Error('invalid_payload', 'The endpoint did not return a valid locator payload.');
@@ -188,47 +188,47 @@ function cmx_locator_validate_payload($payload, $minimum)
     return $valid_locations;
 }
 
-function cmx_locator_record_error($message)
+function cmx_november_locator_record_error($message)
 {
-    $options = cmx_locator_options();
+    $options = cmx_november_locator_options();
     $options['last_error'] = sanitize_text_field($message);
-    update_option(CMX_LOCATOR_OPTION, $options);
+    update_option(CMX_NOVEMBER_LOCATOR_OPTION, $options);
     error_log('Casa Mexico locator sync: ' . $message);
-    return new WP_Error('cmx_locator_sync_failed', $message);
+    return new WP_Error('cmx_november_locator_sync_failed', $message);
 }
 
-function cmx_locator_feed_url()
+function cmx_november_locator_feed_url()
 {
     $upload = wp_upload_dir();
-    return trailingslashit($upload['baseurl']) . CMX_LOCATOR_FILENAME;
+    return trailingslashit($upload['baseurl']) . CMX_NOVEMBER_LOCATOR_FILENAME;
 }
 
-function cmx_locator_feed_path()
+function cmx_november_locator_feed_path()
 {
     $upload = wp_upload_dir();
-    return trailingslashit($upload['basedir']) . CMX_LOCATOR_FILENAME;
+    return trailingslashit($upload['basedir']) . CMX_NOVEMBER_LOCATOR_FILENAME;
 }
 
-function cmx_locator_register_rest_routes()
+function cmx_november_locator_register_rest_routes()
 {
-    register_rest_route('cmx-locator/v1', '/feed', array(
+    register_rest_route('cmx-november-locator/v1', '/feed', array(
         'methods' => 'GET',
-        'callback' => 'cmx_locator_rest_get_feed',
+        'callback' => 'cmx_november_locator_rest_get_feed',
         'permission_callback' => '__return_true',
     ));
 
-    register_rest_route('cmx-locator/v1', '/sync', array(
+    register_rest_route('cmx-november-locator/v1', '/sync', array(
         'methods' => array('GET', 'POST'),
-        'callback' => 'cmx_locator_rest_trigger_sync',
-        'permission_callback' => 'cmx_locator_rest_sync_permissions',
+        'callback' => 'cmx_november_locator_rest_trigger_sync',
+        'permission_callback' => 'cmx_november_locator_rest_sync_permissions',
     ));
 }
 
-function cmx_locator_rest_get_feed()
+function cmx_november_locator_rest_get_feed()
 {
-    $path = cmx_locator_feed_path();
+    $path = cmx_november_locator_feed_path();
     if (!file_exists($path)) {
-        cmx_locator_sync();
+        cmx_november_locator_sync();
     }
     if (file_exists($path)) {
         $content = file_get_contents($path);
@@ -240,12 +240,12 @@ function cmx_locator_rest_get_feed()
     return new WP_Error('no_feed', 'Locator feed JSON file not found.', array('status' => 404));
 }
 
-function cmx_locator_rest_sync_permissions($request)
+function cmx_november_locator_rest_sync_permissions($request)
 {
     if (current_user_can('manage_options')) {
         return true;
     }
-    $options = cmx_locator_options();
+    $options = cmx_november_locator_options();
     $token_param = $request->get_param('token');
     if (!empty($token_param) && !empty($options['endpoint']) && strpos($options['endpoint'], $token_param) !== false) {
         return true;
@@ -253,9 +253,9 @@ function cmx_locator_rest_sync_permissions($request)
     return new WP_Error('rest_forbidden', 'Unauthorized sync request.', array('status' => 401));
 }
 
-function cmx_locator_rest_trigger_sync($request)
+function cmx_november_locator_rest_trigger_sync($request)
 {
-    $result = cmx_locator_sync();
+    $result = cmx_november_locator_sync();
     if (is_wp_error($result)) {
         return new WP_Error('sync_failed', $result->get_error_message(), array('status' => 500));
     }
@@ -266,37 +266,37 @@ function cmx_locator_rest_trigger_sync($request)
     ));
 }
 
-function cmx_locator_enqueue_config()
+function cmx_november_locator_enqueue_config()
 {
-    $options = cmx_locator_options();
-    $path = cmx_locator_feed_path();
+    $options = cmx_november_locator_options();
+    $path = cmx_november_locator_feed_path();
     if (!file_exists($path)) {
-        cmx_locator_sync();
-        $options = cmx_locator_options();
+        cmx_november_locator_sync();
+        $options = cmx_november_locator_options();
     }
 
     $default_endpoint = 'https://script.google.com/macros/s/AKfycbz8pQv5oekeeTT35zyE22mPqczBBeWI6facsR9vs62jUCzv-kC4eiDxKyYf43nvx9Faew/exec';
     $direct_endpoint = !empty($options['endpoint']) ? $options['endpoint'] : $default_endpoint;
 
     wp_enqueue_script(
-        'cmx-locator-feed',
+        'cmx-november-locator-feed',
         plugins_url('assets/locator-feed.js', __FILE__),
         array(),
         '1.1.1',
         true
     );
-    wp_localize_script('cmx-locator-feed', 'CMX_LOCATOR', array(
-        'url' => add_query_arg('v', rawurlencode((string) $options['last_sync_at']), cmx_locator_feed_url()),
-        'restUrl' => esc_url_raw(rest_url('cmx-locator/v1/feed')),
+    wp_localize_script('cmx-november-locator-feed', 'CMX_NOVEMBER_LOCATOR', array(
+        'url' => add_query_arg('v', rawurlencode((string) $options['last_sync_at']), cmx_november_locator_feed_url()),
+        'restUrl' => esc_url_raw(rest_url('cmx-november-locator/v1/feed')),
         'directEndpoint' => esc_url_raw($direct_endpoint),
         'updatedAt' => $options['last_sync_at'],
         'count' => (int) $options['last_count'],
     ));
 }
 
-function cmx_locator_enqueue_shortcode_assets()
+function cmx_november_locator_enqueue_shortcode_assets()
 {
-    cmx_locator_enqueue_config();
+    cmx_november_locator_enqueue_config();
 
     wp_enqueue_style(
         'font-awesome-6',
@@ -321,24 +321,24 @@ function cmx_locator_enqueue_shortcode_assets()
     );
 
     wp_enqueue_style(
-        'cmx-locator-map',
+        'cmx-november-locator-map',
         plugins_url('assets/locator-map.css', __FILE__),
         array('leaflet', 'font-awesome-6'),
         filemtime(plugin_dir_path(__FILE__) . 'assets/locator-map.css')
     );
 
     wp_enqueue_script(
-        'cmx-locator-map',
+        'cmx-november-locator-map',
         plugins_url('assets/locator-map.js', __FILE__),
-        array('leaflet', 'cmx-locator-feed'),
+        array('leaflet', 'cmx-november-locator-feed'),
         filemtime(plugin_dir_path(__FILE__) . 'assets/locator-map.js'),
         true
     );
 }
 
-function cmx_locator_shortcode($atts = array())
+function cmx_november_locator_shortcode($atts = array())
 {
-    cmx_locator_enqueue_shortcode_assets();
+    cmx_november_locator_enqueue_shortcode_assets();
 
     ob_start();
     ?>
@@ -448,63 +448,63 @@ function cmx_locator_shortcode($atts = array())
     return ob_get_clean();
 }
 
-function cmx_locator_admin_menu()
+function cmx_november_locator_admin_menu()
 {
     add_options_page(
-        'Casa Mexico Locator',
-        'Casa Mexico Locator',
+        'Casa Mexico November Locator',
+        'Casa Mexico November Locator',
         'manage_options',
-        'cmx-locator-sync',
-        'cmx_locator_settings_page'
+        'cmx-november-locator-sync',
+        'cmx_november_locator_settings_page'
     );
 }
 
-function cmx_locator_register_settings()
+function cmx_november_locator_register_settings()
 {
-    register_setting('cmx_locator_sync', CMX_LOCATOR_OPTION, array(
-        'sanitize_callback' => 'cmx_locator_sanitize_options',
+    register_setting('cmx_november_locator_sync', CMX_NOVEMBER_LOCATOR_OPTION, array(
+        'sanitize_callback' => 'cmx_november_locator_sanitize_options',
     ));
 }
 
-function cmx_locator_sanitize_options($input)
+function cmx_november_locator_sanitize_options($input)
 {
-    $current = cmx_locator_options();
+    $current = cmx_november_locator_options();
     $current['endpoint'] = isset($input['endpoint']) ? esc_url_raw(trim($input['endpoint'])) : '';
     $current['minimum_locations'] = isset($input['minimum_locations']) ? max(1, absint($input['minimum_locations'])) : 50;
     return $current;
 }
 
-function cmx_locator_save_and_sync()
+function cmx_november_locator_save_and_sync()
 {
     if (!current_user_can('manage_options')) {
         wp_die('You do not have permission to sync the locator.');
     }
-    check_admin_referer('cmx_locator_save_and_sync');
+    check_admin_referer('cmx_november_locator_save_and_sync');
 
-    $options = cmx_locator_options();
+    $options = cmx_november_locator_options();
     if (isset($_POST['endpoint'])) {
         $options['endpoint'] = esc_url_raw(trim($_POST['endpoint']));
     }
     if (isset($_POST['minimum_locations'])) {
         $options['minimum_locations'] = max(1, absint($_POST['minimum_locations']));
     }
-    update_option(CMX_LOCATOR_OPTION, $options);
-    wp_cache_delete(CMX_LOCATOR_OPTION, 'options');
+    update_option(CMX_NOVEMBER_LOCATOR_OPTION, $options);
+    wp_cache_delete(CMX_NOVEMBER_LOCATOR_OPTION, 'options');
 
-    $result = cmx_locator_sync();
+    $result = cmx_november_locator_sync();
     $status = is_wp_error($result) ? 'error' : 'success';
     $count = is_wp_error($result) ? 0 : (int)$result;
-    wp_safe_redirect(add_query_arg(array('cmx_sync' => $status, 'cmx_count' => $count), admin_url('options-general.php?page=cmx-locator-sync')));
+    wp_safe_redirect(add_query_arg(array('cmx_sync' => $status, 'cmx_count' => $count), admin_url('options-general.php?page=cmx-november-locator-sync')));
     exit;
 }
 
-function cmx_locator_settings_page()
+function cmx_november_locator_settings_page()
 {
     if (!current_user_can('manage_options')) {
         return;
     }
-    $options = cmx_locator_options();
-    $next_cron = wp_next_scheduled(CMX_LOCATOR_CRON);
+    $options = cmx_november_locator_options();
+    $next_cron = wp_next_scheduled(CMX_NOVEMBER_LOCATOR_CRON);
     $logo_url = plugins_url('assets/logo-casa-mexico.svg', __FILE__);
     ?>
     <div class="wrap">
@@ -512,17 +512,17 @@ function cmx_locator_settings_page()
             <div style="background: #ffffff; padding: 4px 8px; border-radius: 8px; display: inline-flex; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                 <img src="<?php echo esc_url($logo_url); ?>" alt="Casa Mexico" style="height: 32px; width: auto; vertical-align: middle;">
             </div>
-            <span>Casa Mexico Store Locator Sync</span>
+            <span>Casa Mexico November Store Locator Sync</span>
         </h1>
         <?php if (isset($_GET['cmx_sync'])) : ?>
             <div class="notice notice-<?php echo $_GET['cmx_sync'] === 'success' ? 'success' : 'error'; ?> is-dismissible"><p>
-                <?php echo $_GET['cmx_sync'] === 'success' ? sprintf('Locator sync completed successfully! (%d stores published)', $published_count) : 'Sync failed: ' . esc_html(!empty($options['last_error']) ? $options['last_error'] : 'Could not fetch Apps Script payload. Please ensure Web App deployment access is set to "Anyone".'); ?>
+                <?php echo $_GET['cmx_sync'] === 'success' ? sprintf('Locator sync completed successfully! (%d stores published)', (int) $options['last_count']) : 'Sync failed: ' . esc_html(!empty($options['last_error']) ? $options['last_error'] : 'Could not fetch Apps Script payload. Please ensure Web App deployment access is set to "Anyone".'); ?>
             </p></div>
         <?php endif; ?>
 
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-            <input type="hidden" name="action" value="cmx_locator_save_and_sync">
-            <?php wp_nonce_field('cmx_locator_save_and_sync'); ?>
+            <input type="hidden" name="action" value="cmx_november_locator_save_and_sync">
+            <?php wp_nonce_field('cmx_november_locator_save_and_sync'); ?>
             
             <table class="form-table" role="presentation">
                 <tr>
@@ -575,11 +575,11 @@ function cmx_locator_settings_page()
                 <?php endif; ?>
                 <tr>
                     <td><strong>Cached JSON Feed URL:</strong></td>
-                    <td><code><a href="<?php echo esc_url(cmx_locator_feed_url()); ?>" target="_blank"><?php echo esc_html(cmx_locator_feed_url()); ?></a></code></td>
+                    <td><code><a href="<?php echo esc_url(cmx_november_locator_feed_url()); ?>" target="_blank"><?php echo esc_html(cmx_november_locator_feed_url()); ?></a></code></td>
                 </tr>
                 <tr>
                     <td><strong>REST API Feed Endpoint:</strong></td>
-                    <td><code><a href="<?php echo esc_url(rest_url('cmx-locator/v1/feed')); ?>" target="_blank"><?php echo esc_html(rest_url('cmx-locator/v1/feed')); ?></a></code></td>
+                    <td><code><a href="<?php echo esc_url(rest_url('cmx-november-locator/v1/feed')); ?>" target="_blank"><?php echo esc_html(rest_url('cmx-november-locator/v1/feed')); ?></a></code></td>
                 </tr>
             </tbody>
         </table>
