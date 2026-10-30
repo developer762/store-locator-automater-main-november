@@ -28,7 +28,7 @@ add_action('rest_api_init', 'cmx_locator_register_rest_routes');
 add_action('admin_post_cmx_locator_save_and_sync', 'cmx_locator_save_and_sync');
 add_action('admin_post_cmx_locator_sync_now', 'cmx_locator_save_and_sync');
 add_action('wp_enqueue_scripts', 'cmx_locator_enqueue_config');
-add_shortcode('casa_mexico_locator', 'cmx_locator_shortcode');
+add_shortcode('casa_mexico_november_locator', 'cmx_locator_shortcode');
 
 function cmx_locator_defaults()
 {
@@ -345,7 +345,7 @@ function cmx_locator_shortcode($atts = array())
     <div class="cmx-locator-wrap">
         <!-- Header Row with Title and View Tabs flexed side-by-side -->
         <div class="cmx-header-row">
-            <h2 class="cmx-page-title">Casa Mexico Plugin</h2>
+            <h2 class="cmx-page-title">Casa Mexico November Plugin</h2>
             <div class="cmx-view-toggle">
                 <button type="button" id="cmx-view-map-btn" class="cmx-toggle-btn cmx-active" title="Map View"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> Store Locator</button>
                 <button type="button" id="cmx-view-sales-btn" class="cmx-toggle-btn" title="Sales Data Analytics"><i class="fa-solid fa-chart-column" aria-hidden="true"></i> Sales Data</button>
